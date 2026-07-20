@@ -1,0 +1,190 @@
+:root {
+  --bg-color: #f8fafc;
+  --card-bg: #ffffff;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --border: #e2e8f0;
+  
+  /* Status Colors */
+  --status-not-started: #f1f5f9;
+  --text-not-started: #475569;
+  
+  --status-on-schedule: #e0f2fe;
+  --text-on-schedule: #0369a1;
+  
+  --status-delayed: #fee2e2;
+  --text-delayed: #b91c1c;
+  
+  --status-done: #dcfce3;
+  --text-done: #15803d;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+body {
+  background-color: var(--bg-color);
+  color: var(--text-main);
+  padding: 2rem;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 3rem;
+  background: var(--card-bg);
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  border: 1px solid var(--border);
+}
+
+.live-clock {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-top: 0.5rem;
+}
+
+.overall-progress-container {
+  max-width: 600px;
+  margin: 1.5rem auto 0.5rem;
+  background: var(--border);
+  height: 12px;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.overall-progress-bar {
+  height: 100%;
+  background: var(--text-done);
+  width: 0%;
+  transition: width 0.4s ease;
+}
+
+.day-section {
+  margin-bottom: 4rem;
+}
+
+.day-header {
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--border);
+}
+
+.day-header h2 {
+  font-size: 1.75rem;
+  color: #0f172a;
+}
+
+.team-expectation {
+  font-size: 1rem;
+  color: var(--text-muted);
+  margin-top: 0.5rem;
+  font-style: italic;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+}
+
+.card {
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+}
+
+.card-header {
+  margin-bottom: 1.25rem;
+}
+
+.member-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.module-title {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+
+.task-list {
+  list-style: none;
+  flex-grow: 1;
+}
+
+.task-item {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  transition: background 0.3s, border-color 0.3s;
+}
+
+.task-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.task-label {
+  font-size: 0.95rem;
+  line-height: 1.4;
+  flex-grow: 1;
+}
+
+.status-select {
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+}
+
+/* Dynamic Status Classes applied to the task item via JS */
+.task-item[data-status="not-started"] { background: var(--status-not-started); }
+.task-item[data-status="not-started"] .status-select { color: var(--text-not-started); }
+
+.task-item[data-status="on-schedule"] { background: var(--status-on-schedule); border-color: #bae6fd; }
+.task-item[data-status="on-schedule"] .status-select { color: var(--text-on-schedule); }
+
+.task-item[data-status="delayed"] { background: var(--status-delayed); border-color: #fecaca; }
+.task-item[data-status="delayed"] .status-select { color: var(--text-delayed); }
+
+.task-item[data-status="done"] { background: var(--status-done); border-color: #bbf7d0; }
+.task-item[data-status="done"] .status-select { color: var(--text-done); }
+.task-item[data-status="done"] .task-label { text-decoration: line-through; opacity: 0.7; }
+
+.expected-output {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: #f8fafc;
+  border-left: 4px solid #94a3b8;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.expected-output h4 {
+  margin-bottom: 0.5rem;
+  color: #334155;
+}
+
+.expected-output ul {
+  padding-left: 1.25rem;
+  color: var(--text-muted);
+}
