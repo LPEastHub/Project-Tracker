@@ -1,3 +1,17 @@
+// Import Supabase via CDN
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+
+// ==========================================
+// 1. ADD YOUR SUPABASE CREDENTIALS HERE
+// ==========================================
+const SUPABASE_URL = 'https://luczzggtatqxbdoonjqt.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1Y3p6Z2d0YXRxeGJkb29uanF0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2MDk4ODAsImV4cCI6MjEwMDE4NTg4MH0.g8P7jWj7UROzFFOfAcYjNoRjuhZk0DVrYAstHINg0SE';
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// We will store the database statuses here
+let dbStatuses = {};
+
 // --- Live Clock Logic ---
 function updateClock() {
   const now = new Date();
@@ -15,7 +29,6 @@ const schedule = [
     members: [
       {
         member: "Member 1", module: "Auth + App Shell",
-        // UPDATED: Now says Vue.js instead of Next.js
         tasks: ["Set up Vue.js project structure", "Configure base layout", "Create sidebar/navbar skeleton", "Create login page UI", "Connect project with Supabase client setup"],
         expected: ["Project shell is created", "Login page UI exists", "App layout exists", "Sidebar/navbar placeholder exists"]
       },
@@ -143,10 +156,9 @@ const schedule = [
 ];
 
 let totalTasks = 0;
-
-// --- Render Logic ---
 const container = document.getElementById('timeline-container');
 
+// --- Render Logic ---
 function renderTracker() {
   container.innerHTML = '';
   totalTasks = 0;
@@ -175,14 +187,14 @@ function renderTracker() {
         const taskId = `d${dayIndex}-m${memberIndex}-t${taskIndex}`;
         totalTasks++;
         
-        // Get saved status or default to 'not-started'
-        const currentStatus = localStorage.getItem(taskId) || 'not-started';
+        // Get status from our Supabase dictionary, default to 'not-started'
+        const currentStatus = dbStatuses[taskId] || 'not-started';
         
         taskHTML += `
           <li class="task-item" id="item-${taskId}" data-status="${currentStatus}">
             <div class="task-header">
               <span class="task-label">${task}</span>
-              <select class="status-select" onchange="updateStatus('${taskId}', this.value)">
+              <select class="status-select" id="select-${taskId}" onchange="updateStatus('${taskId}', this.value)">
                 <option value="not-started" ${currentStatus === 'not-started' ? 'selected' : ''}>Not Started</option>
                 <option value="on-schedule" ${currentStatus === 'on-schedule' ? 'selected' : ''}>On Schedule</option>
                 <option value="delayed" ${currentStatus === 'delayed' ? 'selected' : ''}>Delayed</option>
@@ -193,7 +205,6 @@ function renderTracker() {
         `;
       });
 
-      // Build Expected Outputs HTML list
       const expectedOutputs = memberData.expected.map(exp => `<li>${exp}</li>`).join('');
 
       card.innerHTML = `
@@ -218,13 +229,22 @@ function renderTracker() {
 }
 
 // --- State Management ---
-window.updateStatus = function(taskId, newStatus) {
-  // Save to localStorage
-  localStorage.setItem(taskId, newStatus);
-  // Update data attribute for CSS targeting
+// We attach this to `window` because type="module" scopes functions locally
+window.updateStatus = async function(taskId, newStatus) {
+  // 1. Optimistically update UI instantly for the user
   document.getElementById(`item-${taskId}`).setAttribute('data-status', newStatus);
-  // Recalculate progress bar
+  dbStatuses[taskId] = newStatus;
   updateProgress();
+
+  // 2. Save to Supabase (Upsert creates if missing, updates if exists)
+  const { error } = await supabase
+    .from('tasks')
+    .upsert({ id: taskId, status: newStatus });
+
+  if (error) {
+    console.error('Error updating status:', error);
+    alert("Failed to save to database. Please check your connection.");
+  }
 };
 
 function updateProgress() {
@@ -234,7 +254,7 @@ function updateProgress() {
     dayData.members.forEach((memberData, memberIndex) => {
       memberData.tasks.forEach((task, taskIndex) => {
         const taskId = `d${dayIndex}-m${memberIndex}-t${taskIndex}`;
-        if (localStorage.getItem(taskId) === 'done') {
+        if (dbStatuses[taskId] === 'done') {
           overallCompleted++;
         }
       });
@@ -246,5 +266,51 @@ function updateProgress() {
   document.getElementById('overall-text').innerText = `${overallPercent}% Complete (${overallCompleted}/${totalTasks} Tasks Done)`;
 }
 
-// Initialize
-renderTracker();
+// --- Initialize App ---
+async function initApp() {
+  // 1. Fetch initial data from Supabase
+  const { data, error } = await supabase.from('tasks').select('*');
+  
+  if (error) {
+    console.error('Error fetching data:', error);
+    container.innerHTML = '<div style="color:red; text-align:center; padding: 2rem;">Error connecting to database. Did you set your Supabase keys?</div>';
+    return;
+  }
+
+  // 2. Populate local dictionary
+  if (data) {
+    data.forEach(row => {
+      dbStatuses[row.id] = row.status;
+    });
+  }
+
+  // 3. Render UI
+  renderTracker();
+
+  // 4. Set up Realtime listener (So you see what your team changes instantly)
+  supabase
+    .channel('public:tasks')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, payload => {
+      const updatedId = payload.new.id;
+      const updatedStatus = payload.new.status;
+      
+      // Update our local state
+      dbStatuses[updatedId] = updatedStatus;
+      
+      // Update DOM if element exists
+      const listItem = document.getElementById(`item-${updatedId}`);
+      const selectBox = document.getElementById(`select-${updatedId}`);
+      
+      if (listItem && selectBox) {
+        listItem.setAttribute('data-status', updatedStatus);
+        selectBox.value = updatedStatus;
+      }
+      
+      // Recalculate progress bar
+      updateProgress();
+    })
+    .subscribe();
+}
+
+// Start the app
+initApp();
